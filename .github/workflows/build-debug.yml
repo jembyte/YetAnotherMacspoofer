@@ -1,0 +1,90 @@
+#
+name: Build module
+
+on:
+  workflow_dispatch:
+    inputs:
+      newmac:
+        description: 'Wifi sta mac address'
+        required: true
+        default: '40:24:B2:F4:CB:F7'
+        type: string
+
+jobs:
+  build-and-upload-artifact:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Checkout LSPosed/DisableFlagSecure
+        uses: actions/checkout@v4
+        with:
+          repository: LSPosed/DisableFlagSecure
+          path: LSPosed/DisableFlagSecure
+
+      - name: Checkout libxposed/api
+        uses: actions/checkout@v4
+        with:
+          repository: libxposed/api
+          path: libxposed/api
+
+      - name: Patching main module
+        env:
+          MODKTFILE: app/src/main/java/me/ezar/yetanothermacspoofer/ModuleMain.kt
+          NEWMAC: ${{ inputs.newmac }}
+        run: |
+          echo "Patching ${MODKTFILE##*/}"
+          sed -i "s/40:24:B2:F4:CB:F7/$NEWMAC/" $MODKTFILE
+
+      - name: Setup JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build dependencies
+        env:
+          LXCOMP: DisableFlagSecure/libxposed-compat/src/main/java/io/github/libxposed/api/annotations
+          LXAPI: api/src/main/java/io/github/libxposed/api
+        working-directory: libxposed/api
+        run: |
+          if [ -d "../../LSPosed" ]; then
+              LSPdir="$(readlink -f ../../LSPosed)"
+              mv -fv "$LSPdir/$LXCOMP" "$LXAPI"
+              rm -rf "$LSPdir"
+          fi
+
+          touch gradle.properties
+          if grep -q '^org\.gradle\.daemon' gradle.properties; then
+              sed -i 's/^\(org\.gradle\.daemon\).*$/\1=false/' gradle.properties
+          else
+              echo -e '\norg.gradle.daemon=false' >> gradle.properties
+          fi
+
+          chmod +x ./gradlew
+          ./gradlew publishToMavenLocal
+
+      - name: Build APK
+        run: |
+          touch gradle.properties
+          if grep -q '^org\.gradle\.daemon' gradle.properties; then
+              sed -i 's/^\(org\.gradle\.daemon\).*$/\1=false/' gradle.properties
+          else
+              echo -e '\norg.gradle.daemon=false' >> gradle.properties
+          fi
+
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
