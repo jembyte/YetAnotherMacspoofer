@@ -24,7 +24,7 @@ class ModuleMain(base: XposedInterface, param: XposedModuleInterface.ModuleLoade
             @JvmStatic
             fun before(callback: XposedInterface.BeforeHookCallback) {
                 val mac = "40:24:B2:F4:CB:F7"
-                module.log("setStaMacAddress called! hijacking it to output $mac instead")
+                module.log("setMacAddress called! hijacking it to output $mac instead")
                 callback.args[1] = MacAddress.fromString(mac)
             }
 
@@ -44,7 +44,7 @@ class ModuleMain(base: XposedInterface, param: XposedModuleInterface.ModuleLoade
                 if (callback.args[0] == "com.android.server.wifi.WifiService") {
                     val classLoader = callback.args[1] as PathClassLoader
 
-                    val setMacMethod = classLoader.loadClass("com.android.server.wifi.WifiNative").methods.first { it.name == "setStaMacAddress" }
+                    val setMacMethod = classLoader.loadClass("com.android.server.wifi.WifiNative").methods.first { it.name == "setMacAddress" }
                     module.hook(setMacMethod, WifiNativeHooker::class.java)
 
                 }
