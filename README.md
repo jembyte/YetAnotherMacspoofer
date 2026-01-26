@@ -14,3 +14,6 @@ Though, WifiNative isn't accessible through normal classloader because it's load
 1. Retrieve `WifiService` via `SystemServiceManager`'s classloader
 2. Use the classloader to retrieve `WifiNative`
 3. Hook `WifiNative#setMacAddress` and do the transformation there
+
+### Android 11
+Android 11 support is still in testing and is not fully functional yet.
